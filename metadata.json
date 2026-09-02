@@ -1,0 +1,6 @@
+{
+  "name": "PyLage UI Studio",
+  "description": "Interactive showcase, live component playground, reactive state debugger, and documentation for PyLage UI reactive Python framework.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

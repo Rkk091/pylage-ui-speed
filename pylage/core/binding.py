@@ -40,8 +40,9 @@ class StateBinding:
         self.dirty = dirty
         self.scheduler = scheduler
         self._subscriptions: list[Callable[[], None]] = []
+        self._node_bindings: dict[str, list[tuple[State, Component, str, Callable[[], None]]]] = {}
 
-        self._bind_tree(root)
+        self.bind_tree(root)
 
     def _is_reactive(
         self,
@@ -65,9 +66,12 @@ class StateBinding:
 
         return prop_definition.reactive
 
-    def _bind_tree(self, node: Any) -> None:
-        if not isinstance(node, Component):
-            return
+    def _bind_single_node(self, node: Component) -> None:
+        if node.id in self._node_bindings:
+            # Already bound; unbind first to avoid duplicate subscriptions
+            self._unbind_single_node(node)
+
+        node_records: list[tuple[State, Component, str, Callable[[], None]]] = []
 
         for prop_name, value in node.props.items():
             if not isinstance(value, State):
@@ -86,6 +90,7 @@ class StateBinding:
                 )
             )
 
+            node_records.append((value, node, prop_name, unsubscribe))
             self._subscriptions.append(unsubscribe)
 
             if self.graph is not None:
@@ -95,12 +100,47 @@ class StateBinding:
                     prop_name,
                 )
 
+        self._node_bindings[node.id] = node_records
+
+    def _unbind_single_node(self, node: Component) -> None:
+        records = self._node_bindings.pop(node.id, [])
+        for value, comp, prop_name, unsubscribe in records:
+            try:
+                unsubscribe()
+            except Exception:
+                pass
+            if unsubscribe in self._subscriptions:
+                self._subscriptions.remove(unsubscribe)
+            if self.graph is not None:
+                self.graph.remove_dependency(value, comp, prop_name)
+
+    def bind_tree(self, node: Any) -> None:
+        """Recursively bind a component and all its children."""
+        if not isinstance(node, Component):
+            return
+
+        self._bind_single_node(node)
+
         for child in node.children:
-            self._bind_tree(child)
+            self.bind_tree(child)
 
     def bind(self, node: Any) -> None:
         """Bind a newly-added component or subtree to state updates."""
-        self._bind_tree(node)
+        self.bind_tree(node)
+
+    def unbind_tree(self, node: Any) -> None:
+        """Recursively unbind a component and all its children from state updates."""
+        if not isinstance(node, Component):
+            return
+
+        self._unbind_single_node(node)
+
+        for child in node.children:
+            self.unbind_tree(child)
+
+    def unbind(self, node: Any) -> None:
+        """Unbind a component or subtree from state updates."""
+        self.unbind_tree(node)
 
     def _changed(
         self,
@@ -131,8 +171,21 @@ class StateBinding:
 
     def stop(self) -> None:
         """Remove all State subscriptions."""
+        for records in list(self._node_bindings.values()):
+            for value, comp, prop_name, unsubscribe in records:
+                try:
+                    unsubscribe()
+                except Exception:
+                    pass
+        self._node_bindings.clear()
 
         for unsubscribe in self._subscriptions:
-            unsubscribe()
+            try:
+                unsubscribe()
+            except Exception:
+                pass
 
         self._subscriptions.clear()
+
+        if self.graph is not None:
+            self.graph.clear()

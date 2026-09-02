@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 
+import threading
+
+
 @dataclass(frozen=True)
 class PropDefinition:
     """Definition of a component property."""
@@ -30,6 +33,29 @@ class ComponentRegistry:
 
     def __init__(self) -> None:
         self._definitions: dict[str, ComponentDefinition] = {}
+        self._lock = threading.RLock()
+
+    def register_if_missing(
+        self,
+        type: str,
+        tag: str,
+        *,
+        void: bool = False,
+        renderer: Callable[..., str] | None = None,
+        props: dict[str, PropDefinition] | None = None,
+    ) -> ComponentDefinition:
+        """Atomic check and register to eliminate TOCTOU races."""
+        with self._lock:
+            existing = self._definitions.get(type)
+            if existing is not None:
+                return existing
+            return self.register(
+                type,
+                tag,
+                void=void,
+                renderer=renderer,
+                props=props,
+            )
 
     def register(
         self,

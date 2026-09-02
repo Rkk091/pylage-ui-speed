@@ -72,6 +72,70 @@ class EventMessage:
 
 
 @dataclass(frozen=True)
+class EventMessageResponse:
+    """Server-to-client response to an EventMessage."""
+
+    ok: bool
+    result: Any = None
+    error: str | None = None
+
+    @property
+    def type(self) -> str:
+        return "response"
+
+    def to_dict(self) -> dict[str, Any]:
+        message: dict[str, Any] = {
+            "type": self.type,
+            "ok": self.ok,
+        }
+
+        if self.result is not None:
+            message["result"] = self.result
+
+        if self.error is not None:
+            message["error"] = self.error
+
+        return message
+
+    def to_json(self) -> str:
+        return json.dumps(
+            self.to_dict(),
+            separators=(",", ":"),
+        )
+
+    @classmethod
+    def success(cls, result: Any = None) -> "EventMessageResponse":
+        return cls(ok=True, result=result)
+
+    @classmethod
+    def error(cls, error: str) -> "EventMessageResponse":
+        return cls(ok=False, error=error)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "EventMessageResponse":
+        if not isinstance(data, dict):
+            raise TypeError("Event response message must be a dictionary.")
+
+        if data.get("type") != "response":
+            raise ValueError("Invalid event response message type.")
+
+        return cls(
+            ok=bool(data.get("ok")),
+            result=data.get("result"),
+            error=data.get("error"),
+        )
+
+    @classmethod
+    def from_json(cls, data: str) -> "EventMessageResponse":
+        try:
+            decoded = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Invalid JSON event response message.") from exc
+
+        return cls.from_dict(decoded)
+
+
+@dataclass(frozen=True)
 class UpdateMessage:
     """Server-to-client component update message."""
 

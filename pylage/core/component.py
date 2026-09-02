@@ -12,7 +12,7 @@ EventHandler = Callable[..., Any]
 MutationSubscriber = Callable[[dict[str, Any]], None]
 
 
-@dataclass(init=False)
+@dataclass(init=False, eq=False)
 class Component:
     type: str
     props: dict[str, Any] = field(default_factory=dict)
@@ -230,10 +230,15 @@ class Component:
             "new_parent": new_parent,
         }
 
-        for subscriber in tuple(
-            new_parent._mutation_subscribers
+        # Notify old parent and new parent subscribers (without duplicates)
+        seen_subscribers = set()
+        for subscriber in (
+            list(old_parent._mutation_subscribers)
+            + list(new_parent._mutation_subscribers)
         ):
-            subscriber(event)
+            if subscriber not in seen_subscribers:
+                seen_subscribers.add(subscriber)
+                subscriber(event)
 
         return self
 
@@ -466,7 +471,7 @@ class Component:
 
 
 def component(
-    type: str,
+    type_: str,
     *children: Child,
     **props: Any,
 ) -> Component:
@@ -500,7 +505,7 @@ def component(
     #
     # The registry currently provides metadata and contracts for known
     # components, while unknown components remain backward-compatible.
-    definition = registry.get(type)
+    definition = registry.get(type_)
 
     if definition is not None and definition.props is not None:
         # Keep all supplied props for compatibility. Registry metadata
@@ -511,7 +516,7 @@ def component(
         normalized_props = dict(props)
 
     return Component(
-        type=type,
+        type=type_,
         props=normalized_props,
         children=normalized_children,
         events=events,

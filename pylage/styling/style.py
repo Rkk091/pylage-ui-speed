@@ -73,8 +73,31 @@ class Style:
     box_shadow: Any = None
     opacity: Any = None
     overflow: Any = None
+    overflow_x: Any = None
+    overflow_y: Any = None
     box_sizing: Any = None
     cursor: Any = None
+    object_fit: Any = None
+    object_position: Any = None
+    aspect_ratio: Any = None
+    user_select: Any = None
+    text_overflow: Any = None
+
+    z_index: Any = None
+    transform: Any = None
+    transition: Any = None
+    text_transform: Any = None
+    text_decoration: Any = None
+    letter_spacing: Any = None
+    white_space: Any = None
+    outline: Any = None
+    visibility: Any = None
+    pointer_events: Any = None
+
+    border_top: Any = None
+    border_right: Any = None
+    border_bottom: Any = None
+    border_left: Any = None
 
     custom: dict[str, Any] | None = None
 

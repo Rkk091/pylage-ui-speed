@@ -43,5 +43,15 @@ class Scheduler:
         nodes = self.dirty.nodes()
         self.dirty.clear()
 
+        errors = []
         for node in nodes:
-            self.callback(node)
+            try:
+                self.callback(node)
+            except Exception as exc:
+                errors.append((node, exc))
+
+        if errors:
+            first_node, first_exc = errors[0]
+            raise RuntimeError(
+                f"Scheduler callback failed for {first_node}: {first_exc}"
+            ) from first_exc

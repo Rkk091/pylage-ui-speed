@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime Test</title>
+</head>
+<body>
+<div data-pylage-id="9863b61b0d" style="display:flex;flex-direction:column"><h1 data-pylage-id="e2674fb04d">Runtime Test</h1><button data-pylage-id="a585813170">Click me</button></div>
+<script>
+window.PyLage = window.PyLage || {};
+window.PyLage.websocketUrl = '';
+</script>
+<script>
+(function () {
+    "use strict";
+
+    window.PyLage = window.PyLage || {};
+
+    const boundEventTypes = new Set(["click", "input", "change", "submit"]);
+    let reconnectDelay = 1000;
+    const maxReconnectDelay = 16000;
+
+    function ensureEventTypeBound(eventType) {
+        if (!eventType || boundEventTypes.has(eventType)) {
+            return;
+        }
+        boundEventTypes.add(eventType);
+        document.addEventListener(eventType, handleEvent, true);
+    }
+
+    function scanAndBindEvents(rootElement) {
+        const root = rootElement || document;
+        const elements = root.querySelectorAll ? root.querySelectorAll("[data-pylage-events]") : [];
+        for (let i = 0; i < elements.length; i++) {
+            const eventsAttr = elements[i].getAttribute("data-pylage-events");
+            if (eventsAttr) {
+                const parts = eventsAttr.split(",");
+                for (let j = 0; j < parts.length; j++) {
+                    const trimmed = parts[j].trim();
+                    if (trimmed) {
+                        ensureEventTypeBound(trimmed);
+                    }
+                }
+            }
+        }
+    }
+
+    function scheduleReconnect(url) {
+        if (!url) {
+            return;
+        }
+        setTimeout(function () {
+            console.log("[PyLage] Attempting reconnect to:", url);
+            connectWebSocket(url);
+            reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
+        }, reconnectDelay);
+    }
+
+    function connectWebSocket(url) {
+        if (!url) {
+            return null;
+        }
+
+        console.log("[PyLage] Connecting:", url);
+
+        let socket;
+
+        try {
+            socket = new WebSocket(url);
+        } catch (error) {
+            console.error("[PyLage] WebSocket creation failed", error);
+            scheduleReconnect(url);
+            return null;
+        }
+
+        socket.addEventListener("open", function () {
+            console.log("[PyLage] WebSocket connected");
+            reconnectDelay = 1000;
+            window.PyLage.socket = socket;
+            if (typeof window.PyLage.onConnectionChange === "function") {
+                window.PyLage.onConnectionChange(true);
+            }
+        });
+
+        socket.addEventListener("close", function () {
+            console.log("[PyLage] WebSocket disconnected");
+            if (typeof window.PyLage.onConnectionChange === "function") {
+                window.PyLage.onConnectionChange(false);
+            }
+            scheduleReconnect(url);
+        });
+
+        socket.addEventListener("error", function (error) {
+            console.error("[PyLage] WebSocket error", error);
+        });
+
+        socket.addEventListener("message", function (event) {
+            try {
+                const message = JSON.parse(event.data);
+
+                if (
+                    window.PyLage &&
+                    typeof window.PyLage.onResponse === "function"
+                ) {
+                    window.PyLage.onResponse(message);
+                }
+            } catch (error) {
+                console.error("[PyLage] Invalid server message", error);
+            }
+        });
+
+        return socket;
+    }
+
+    function sendEvent(componentId, eventName, payload) {
+        const message = {
+            type: "event",
+            id: componentId,
+            event: eventName
+        };
+
+        if (payload !== undefined) {
+            message.payload = payload;
+        }
+
+        const socket = window.PyLage.socket;
+
+        if (
+            socket &&
+            socket.readyState === WebSocket.OPEN
+        ) {
+            console.log("[PyLage] Sending event:", message);
+            socket.send(JSON.stringify(message));
+            return;
+        }
+
+        console.warn(
+            "[PyLage] WebSocket not ready; event not sent:",
+            message
+        );
+
+        if (
+            window.PyLage &&
+            typeof window.PyLage.onEvent === "function"
+        ) {
+            window.PyLage.onEvent(message);
+        }
+    }
+
+    function handleEvent(event) {
+        const target = event.target.closest("[data-pylage-id]");
+
+        if (!target) {
+            return;
+        }
+
+        const componentId = target.getAttribute("data-pylage-id");
+        const eventNames = target.getAttribute("data-pylage-events");
+
+        if (!componentId || !eventNames) {
+            return;
+        }
+
+        const supportedEvents = eventNames
+            .split(",")
+            .map(function (name) {
+                return name.trim();
+            });
+
+        if (supportedEvents.indexOf(event.type) === -1) {
+            return;
+        }
+
+        let payload;
+
+        if (event.type === "submit") {
+            event.preventDefault();
+
+            payload = {
+                values: Object.fromEntries(
+                    new FormData(target).entries()
+                )
+            };
+        } else if (event.type === "input" || event.type === "change") {
+            payload = {};
+
+            if ("value" in target) {
+                payload.value = target.value;
+            }
+
+            if ("checked" in target) {
+                payload.checked = Boolean(target.checked);
+            }
+
+            if ("selectedIndex" in target) {
+                payload.selectedIndex = target.selectedIndex;
+            }
+
+            if (
+                target instanceof HTMLSelectElement &&
+                target.multiple
+            ) {
+                payload.selectedOptions = Array.from(
+                    target.selectedOptions
+                ).map(function (option) {
+                    return {
+                        value: option.value,
+                        text: option.text
+                    };
+                });
+            }
+        }
+
+        sendEvent(componentId, event.type, payload);
+    }
+
+    window.PyLage.onEvent = window.PyLage.onEvent || function (message) {
+        console.log("[PyLage event]", message);
+    };
+
+    window.PyLage.onResponse = window.PyLage.onResponse || function (message) {
+        console.log("[PyLage response]", message);
+
+        if (!message) {
+            return;
+        }
+
+        if (message.type === "response") {
+            if (!message.ok) {
+                console.error("[PyLage] Server error:", message.error);
+                if (typeof window.PyLage.onError === "function") {
+                    window.PyLage.onError(message.error);
+                }
+            }
+            return;
+        }
+
+        if (message.type === "tree_move") {
+            if (
+                !message.component_id ||
+                !message.old_parent_id ||
+                !message.new_parent_id
+            ) {
+                return;
+            }
+
+            const component = document.querySelector(
+                '[data-pylage-id="' +
+                CSS.escape(message.component_id) +
+                '"]'
+            );
+
+            const newParent = document.querySelector(
+                '[data-pylage-id="' +
+                CSS.escape(message.new_parent_id) +
+                '"]'
+            );
+
+            if (!component || !newParent) {
+                return;
+            }
+
+            newParent.appendChild(component);
+
+            return;
+        }
+
+        if (message.type === "tree_add") {
+            const parent = document.querySelector(
+                '[data-pylage-id="' + CSS.escape(message.parent_id) + '"]'
+            );
+
+            if (!parent || !Array.isArray(message.components)) {
+                return;
+            }
+
+            function createTreeNode(item) {
+                if (!item || !item.id) {
+                    return null;
+                }
+
+                const element = document.createElement(
+                    item.tag || "div"
+                );
+
+                element.setAttribute(
+                    "data-pylage-id",
+                    item.id
+                );
+
+                if (item.events) {
+                    element.setAttribute(
+                        "data-pylage-events",
+                        item.events
+                    );
+                }
+
+                const props = item.props || {};
+
+                Object.keys(props).forEach(function (name) {
+                    const value = props[name];
+
+                    if (name === "text") {
+                        element.textContent =
+                            value === null || value === undefined
+                                ? ""
+                                : String(value);
+                        return;
+                    }
+
+                    if (value !== null && value !== undefined) {
+                        element.setAttribute(
+                            name,
+                            String(value)
+                        );
+                    }
+                });
+
+                const children = item.children || [];
+
+                if (Array.isArray(children)) {
+                    children.forEach(function (child) {
+                        const childElement = createTreeNode(child);
+
+                        if (childElement) {
+                            element.appendChild(childElement);
+                        }
+                    });
+                }
+
+                return element;
+            }
+
+            message.components.forEach(function (item) {
+                const element = createTreeNode(item);
+
+                if (!element) {
+                    return;
+                }
+
+                if (
+                    typeof message.index === "number" &&
+                    message.index >= 0 &&
+                    message.index < parent.children.length
+                ) {
+                    parent.insertBefore(
+                        element,
+                        parent.children[message.index]
+                    );
+                } else {
+                    parent.appendChild(element);
+                }
+            });
+
+            return;
+        }
+
+        if (message.type === "tree_remove") {
+            if (!Array.isArray(message.component_ids)) {
+                return;
+            }
+
+            message.component_ids.forEach(function (componentId) {
+                if (!componentId) {
+                    return;
+                }
+
+                const component = document.querySelector(
+                    '[data-pylage-id="' + CSS.escape(componentId) + '"]'
+                );
+
+                if (component) {
+                    component.remove();
+                }
+            });
+
+            return;
+        }
+
+        if (message.type === "tree_clear") {
+            const parent = document.querySelector(
+                '[data-pylage-id="' +
+                CSS.escape(message.parent_id) +
+                '"]'
+            );
+
+            if (!parent || !Array.isArray(message.component_ids)) {
+                return;
+            }
+
+            const componentIds = new Set(
+                message.component_ids
+            );
+
+            Array.from(parent.children).forEach(function (child) {
+                const componentId = child.getAttribute(
+                    "data-pylage-id"
+                );
+
+                if (componentIds.has(componentId)) {
+                    parent.removeChild(child);
+                }
+            });
+
+            return;
+        }
+
+        if (message.type === "tree_set_children") {
+            const parent = document.querySelector(
+                '[data-pylage-id="' +
+                CSS.escape(message.parent_id) +
+                '"]'
+            );
+
+            if (!parent || !Array.isArray(message.children)) {
+                return;
+            }
+
+            function createTreeNode(item) {
+                if (!item || !item.id) {
+                    return null;
+                }
+
+                const element = document.createElement(
+                    item.tag || "div"
+                );
+
+                element.setAttribute(
+                    "data-pylage-id",
+                    item.id
+                );
+
+                if (item.events) {
+                    element.setAttribute(
+                        "data-pylage-events",
+                        item.events
+                    );
+                }
+
+                const props = item.props || {};
+
+                Object.keys(props).forEach(function (name) {
+                    const value = props[name];
+
+                    if (name === "text") {
+                        element.textContent =
+                            value === null || value === undefined
+                                ? ""
+                                : String(value);
+                        return;
+                    }
+
+                    if (value !== null && value !== undefined) {
+                        element.setAttribute(
+                            name,
+                            String(value)
+                        );
+                    }
+                });
+
+                const children = item.children || [];
+
+                if (Array.isArray(children)) {
+                    children.forEach(function (child) {
+                        const childElement = createTreeNode(child);
+
+                        if (childElement) {
+                            element.appendChild(childElement);
+                        }
+                    });
+                }
+
+                return element;
+            }
+
+            while (parent.firstChild) {
+                parent.removeChild(parent.firstChild);
+            }
+
+            message.children.forEach(function (item) {
+                const element = createTreeNode(item);
+
+                if (element) {
+                    parent.appendChild(element);
+                }
+            });
+
+            return;
+        }
+
+        if (message.type === "tree_replace") {
+            const oldComponent = document.querySelector(
+                '[data-pylage-id="' +
+                CSS.escape(message.old_component_id) +
+                '"]'
+            );
+
+            if (!oldComponent || !message.new_component) {
+                return;
+            }
+
+            const item = message.new_component;
+
+            if (!item.id) {
+                return;
+            }
+
+            const createTreeNode = function (item) {
+                if (!item || !item.id) {
+                    return null;
+                }
+
+                const element = document.createElement(
+                    item.tag || "div"
+                );
+
+                element.setAttribute(
+                    "data-pylage-id",
+                    item.id
+                );
+
+                if (item.events) {
+                    element.setAttribute(
+                        "data-pylage-events",
+                        item.events
+                    );
+                }
+
+                const props = item.props || {};
+
+                Object.keys(props).forEach(function (name) {
+                    const value = props[name];
+
+                    if (name === "text") {
+                        element.textContent =
+                            value === null || value === undefined
+                                ? ""
+                                : String(value);
+                        return;
+                    }
+
+                    if (value !== null && value !== undefined) {
+                        element.setAttribute(
+                            name,
+                            String(value)
+                        );
+                    }
+                });
+
+                const children = item.children || [];
+
+                if (Array.isArray(children)) {
+                    children.forEach(function (child) {
+                        const childElement = createTreeNode(child);
+
+                        if (childElement) {
+                            element.appendChild(childElement);
+                        }
+                    });
+                }
+
+                return element;
+            };
+
+            const newComponent = createTreeNode(item);
+
+            if (!newComponent) {
+                return;
+            }
+
+            oldComponent.replaceWith(newComponent);
+
+            return;
+        }
+
+        if (message.type !== "update") {
+            return;
+        }
+
+        const component = document.querySelector(
+            '[data-pylage-id="' + CSS.escape(message.id) + '"]'
+        );
+
+        if (!component) {
+            return;
+        }
+
+          const propMeta = message.prop_meta || {};
+
+          // Remove props that disappeared from the component snapshot.
+          const removeProps = Array.isArray(message.remove_props)
+              ? message.remove_props
+              : [];
+
+          removeProps.forEach(function (propName) {
+              const meta = propMeta[propName] || {};
+              const htmlName = meta.html_name || propName;
+
+              component.removeAttribute(htmlName);
+
+              if (htmlName in component) {
+                  try {
+                      if (meta.kind === "boolean") {
+                          component[htmlName] = false;
+                      } else if (meta.kind === "text") {
+                          component[htmlName] = "";
+                      } else {
+                          component[htmlName] = null;
+                      }
+                  } catch (error) {
+                      console.warn(
+                          "[PyLage] Failed to clear removed DOM property:",
+                          htmlName,
+                          error
+                      );
+                  }
+              }
+          });
+
+          if (!message.props) {
+              window.PyLage.onUpdate =
+                  window.PyLage.onUpdate || function () {};
+              window.PyLage.onUpdate(message);
+              return;
+          }
+
+          Object.keys(message.props).forEach(function (propName) {
+              const value = message.props[propName];
+              const meta = propMeta[propName] || {};
+              const kind = meta.kind || "attribute";
+              const htmlName = meta.html_name || propName;
+
+              if (kind === "text") {
+                  component.textContent =
+                      value === null || value === undefined
+                          ? ""
+                          : String(value);
+                  return;
+              }
+
+              if (kind === "boolean") {
+                  if (value) {
+                      component.setAttribute(htmlName, "");
+                  } else {
+                      component.removeAttribute(htmlName);
+                  }
+                  return;
+              }
+
+              if (value === null || value === undefined) {
+                  component.removeAttribute(htmlName);
+
+                  if (htmlName in component) {
+                      try {
+                          component[htmlName] = value;
+                      } catch (error) {
+                          console.warn(
+                              "[PyLage] Failed to clear DOM property:",
+                              htmlName,
+                              error
+                          );
+                      }
+                  }
+
+                  return;
+              }
+
+              if (htmlName in component) {
+                  try {
+                      component[htmlName] = value;
+                      return;
+                  } catch (error) {
+                      console.warn(
+                          "[PyLage] DOM property update failed:",
+                          htmlName,
+                          error
+                      );
+                  }
+              }
+
+              component.setAttribute(
+                  htmlName,
+                  String(value)
+              );
+          });
+
+        window.PyLage.onUpdate = window.PyLage.onUpdate || function () {};
+        window.PyLage.onUpdate(message);
+    };
+
+    document.addEventListener("click", handleEvent);
+    document.addEventListener("input", handleEvent);
+    document.addEventListener("change", handleEvent);
+    document.addEventListener("submit", handleEvent);
+
+    scanAndBindEvents(document);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            scanAndBindEvents(document);
+        });
+    }
+
+    window.PyLage.socket = connectWebSocket(
+        window.PyLage.websocketUrl
+    );
+})();
+</script>
+</body>
+</html>

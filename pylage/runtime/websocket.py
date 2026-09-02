@@ -4,7 +4,12 @@ import asyncio
 import threading
 from typing import Any, Optional
 
-from websockets.asyncio.server import Server, ServerConnection, serve
+try:
+    from websockets.asyncio.server import Server, ServerConnection, serve
+except ImportError:
+    Server = Any  # type: ignore[misc,assignment]
+    ServerConnection = Any  # type: ignore[misc,assignment]
+    serve = None  # type: ignore[assignment]
 
 from pylage.core.binding import StateBinding
 from pylage.core.component import Component
@@ -15,7 +20,17 @@ from pylage.core.scheduler import Scheduler
 from pylage.core.state import State
 from pylage.styling.style import Style
 from pylage.styling.responsive import ResponsiveStyle
-from pylage.core.protocol import EventMessage, UpdateMessage, TreeAddMessage, TreeRemoveMessage, TreeMoveMessage, TreeReplaceMessage, TreeRemoveMessage, TreeMoveMessage, TreeClearMessage, TreeSetChildrenMessage
+from pylage.core.protocol import (
+    EventMessage,
+    EventMessageResponse,
+    UpdateMessage,
+    TreeAddMessage,
+    TreeRemoveMessage,
+    TreeMoveMessage,
+    TreeReplaceMessage,
+    TreeClearMessage,
+    TreeSetChildrenMessage,
+)
 
 
 class WebSocketServer:
@@ -158,7 +173,22 @@ class WebSocketServer:
                 "box_shadow": self._json_safe(value.box_shadow),
                 "opacity": self._json_safe(value.opacity),
                 "overflow": self._json_safe(value.overflow),
+                "box_sizing": self._json_safe(value.box_sizing),
                 "cursor": self._json_safe(value.cursor),
+                "z_index": self._json_safe(value.z_index),
+                "transform": self._json_safe(value.transform),
+                "transition": self._json_safe(value.transition),
+                "text_transform": self._json_safe(value.text_transform),
+                "text_decoration": self._json_safe(value.text_decoration),
+                "letter_spacing": self._json_safe(value.letter_spacing),
+                "white_space": self._json_safe(value.white_space),
+                "outline": self._json_safe(value.outline),
+                "visibility": self._json_safe(value.visibility),
+                "pointer_events": self._json_safe(value.pointer_events),
+                "border_top": self._json_safe(value.border_top),
+                "border_right": self._json_safe(value.border_right),
+                "border_bottom": self._json_safe(value.border_bottom),
+                "border_left": self._json_safe(value.border_left),
                 "custom": self._json_safe(value.custom),
             }
 
@@ -290,6 +320,7 @@ class WebSocketServer:
                 return
 
             self._dispatcher.deindex(old_child)
+            self._binding.unbind(old_child)
             self._dispatcher.index(new_child)
             self._binding.bind(new_child)
 
@@ -355,6 +386,7 @@ class WebSocketServer:
             for child in children:
                 if isinstance(child, Component):
                     self._dispatcher.deindex(child)
+                    self._binding.unbind(child)
 
             component_ids = [
                 child.id
@@ -387,6 +419,7 @@ class WebSocketServer:
             for child in children:
                 if isinstance(child, Component):
                     self._dispatcher.deindex(child)
+                    self._binding.unbind(child)
 
             component_ids = [
                 child.id
@@ -570,6 +603,12 @@ class WebSocketServer:
             self._loop = None
 
     def start(self) -> str:
+        if serve is None:
+            raise ImportError(
+                "websockets is required for WebSocketServer. "
+                "Install it with: pip install websockets"
+            )
+
         if self._thread is not None:
             raise RuntimeError(
                 "WebSocket server is already running."
@@ -614,44 +653,3 @@ class WebSocketServer:
 
         with self._connections_lock:
             self._connections.clear()
-
-
-class EventMessageResponse:
-    """Transport response envelope."""
-
-    def __init__(
-        self,
-        *,
-        ok: bool,
-        result: Any = None,
-        error: str | None = None,
-    ) -> None:
-        self.ok = ok
-        self.result = result
-        self.error = error
-
-    @classmethod
-    def success(cls, result: Any = None) -> "EventMessageResponse":
-        return cls(ok=True, result=result)
-
-    @classmethod
-    def error(cls, error: str) -> "EventMessageResponse":
-        return cls(ok=False, error=error)
-
-    def to_json(self) -> str:
-        import json
-
-        data: dict[str, Any] = {
-            "type": "response",
-            "ok": self.ok,
-        }
-
-        if self.ok:
-            data["result"] = self.result
-        else:
-            data["error"] = self.error
-
-        return json.dumps(
-            data,
-            separators=(",", ":"),
-        )

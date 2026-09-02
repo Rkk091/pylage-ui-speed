@@ -21,23 +21,22 @@ def Row(*children, **props: Any) -> Component:
 def Card(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Card"):
-        registry.register(
-            "Card",
-            "div",
-            props={
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Card",
+        "div",
+        props={
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Card", *children, **props)
 
@@ -49,23 +48,22 @@ def Divider(*children, **props: Any) -> Component:
 def Badge(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Badge"):
-        registry.register(
-            "Badge",
-            "span",
-            props={
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Badge",
+        "span",
+        props={
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Badge", *children, **props)
 
@@ -73,23 +71,22 @@ def Badge(*children, **props: Any) -> Component:
 def Avatar(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Avatar"):
-        registry.register(
-            "Avatar",
-            "span",
-            props={
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Avatar",
+        "span",
+        props={
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Avatar", *children, **props)
 
@@ -97,28 +94,27 @@ def Avatar(*children, **props: Any) -> Component:
 def Accordion(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Accordion"):
-        registry.register(
-            "Accordion",
-            "div",
-            props={
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-                "value": PropDefinition(
-                    "value",
-                    kind="attribute",
-                    html_name="value",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Accordion",
+        "div",
+        props={
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+            "value": PropDefinition(
+                "value",
+                kind="attribute",
+                html_name="value",
+            ),
+        },
+    )
 
     return component("Accordion", *children, **props)
 
@@ -126,28 +122,27 @@ def Accordion(*children, **props: Any) -> Component:
 def Carousel(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Carousel"):
-        registry.register(
-            "Carousel",
-            "div",
-            props={
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-                "value": PropDefinition(
-                    "value",
-                    kind="attribute",
-                    html_name="value",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Carousel",
+        "div",
+        props={
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+            "value": PropDefinition(
+                "value",
+                kind="attribute",
+                html_name="value",
+            ),
+        },
+    )
 
     return component("Carousel", *children, **props)
 
@@ -159,34 +154,33 @@ def Grid(*children, **props: Any) -> Component:
 def Image(**props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Image"):
-        registry.register(
-            "Image",
-            "img",
-            void=True,
-            props={
-                "src": PropDefinition(
-                    "src",
-                    kind="attribute",
-                    html_name="src",
-                ),
-                "alt": PropDefinition(
-                    "alt",
-                    kind="attribute",
-                    html_name="alt",
-                ),
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Image",
+        "img",
+        void=True,
+        props={
+            "src": PropDefinition(
+                "src",
+                kind="attribute",
+                html_name="src",
+            ),
+            "alt": PropDefinition(
+                "alt",
+                kind="attribute",
+                html_name="alt",
+            ),
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Image", **props)
 
@@ -194,33 +188,32 @@ def Image(**props: Any) -> Component:
 def Video(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Video"):
-        registry.register(
-            "Video",
-            "video",
-            props={
-                "src": PropDefinition(
-                    "src",
-                    kind="attribute",
-                    html_name="src",
-                ),
-                "controls": PropDefinition(
-                    "controls",
-                    kind="boolean",
-                    html_name="controls",
-                ),
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Video",
+        "video",
+        props={
+            "src": PropDefinition(
+                "src",
+                kind="attribute",
+                html_name="src",
+            ),
+            "controls": PropDefinition(
+                "controls",
+                kind="boolean",
+                html_name="controls",
+            ),
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Video", *children, **props)
 
@@ -228,33 +221,32 @@ def Video(*children, **props: Any) -> Component:
 def Audio(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Audio"):
-        registry.register(
-            "Audio",
-            "audio",
-            props={
-                "src": PropDefinition(
-                    "src",
-                    kind="attribute",
-                    html_name="src",
-                ),
-                "controls": PropDefinition(
-                    "controls",
-                    kind="boolean",
-                    html_name="controls",
-                ),
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Audio",
+        "audio",
+        props={
+            "src": PropDefinition(
+                "src",
+                kind="attribute",
+                html_name="src",
+            ),
+            "controls": PropDefinition(
+                "controls",
+                kind="boolean",
+                html_name="controls",
+            ),
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Audio", *children, **props)
 
@@ -262,27 +254,26 @@ def Audio(*children, **props: Any) -> Component:
 def Icon(**props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Icon"):
-        registry.register(
-            "Icon",
-            "span",
-            props={
-                "name": PropDefinition(
-                    "name",
-                    kind="text",
-                ),
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Icon",
+        "span",
+        props={
+            "name": PropDefinition(
+                "name",
+                kind="text",
+            ),
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Icon", **props)
 
@@ -290,33 +281,32 @@ def Icon(**props: Any) -> Component:
 def Canvas(*children, **props: Any) -> Component:
     from pylage.core.registry import PropDefinition, registry
 
-    if not registry.has("Canvas"):
-        registry.register(
-            "Canvas",
-            "svg",
-            props={
-                "width": PropDefinition(
-                    "width",
-                    kind="attribute",
-                    html_name="width",
-                ),
-                "height": PropDefinition(
-                    "height",
-                    kind="attribute",
-                    html_name="height",
-                ),
-                "class_name": PropDefinition(
-                    "class_name",
-                    kind="attribute",
-                    html_name="class",
-                ),
-                "title": PropDefinition(
-                    "title",
-                    kind="attribute",
-                    html_name="title",
-                ),
-            },
-        )
+    registry.register_if_missing(
+        "Canvas",
+        "svg",
+        props={
+            "width": PropDefinition(
+                "width",
+                kind="attribute",
+                html_name="width",
+            ),
+            "height": PropDefinition(
+                "height",
+                kind="attribute",
+                html_name="height",
+            ),
+            "class_name": PropDefinition(
+                "class_name",
+                kind="attribute",
+                html_name="class",
+            ),
+            "title": PropDefinition(
+                "title",
+                kind="attribute",
+                html_name="title",
+            ),
+        },
+    )
 
     return component("Canvas", *children, **props)
 

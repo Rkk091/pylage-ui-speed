@@ -7,6 +7,46 @@ CLIENT_RUNTIME = r"""
 
     window.PyLage = window.PyLage || {};
 
+    const boundEventTypes = new Set(["click", "input", "change", "submit"]);
+    let reconnectDelay = 1000;
+    const maxReconnectDelay = 16000;
+
+    function ensureEventTypeBound(eventType) {
+        if (!eventType || boundEventTypes.has(eventType)) {
+            return;
+        }
+        boundEventTypes.add(eventType);
+        document.addEventListener(eventType, handleEvent, true);
+    }
+
+    function scanAndBindEvents(rootElement) {
+        const root = rootElement || document;
+        const elements = root.querySelectorAll ? root.querySelectorAll("[data-pylage-events]") : [];
+        for (let i = 0; i < elements.length; i++) {
+            const eventsAttr = elements[i].getAttribute("data-pylage-events");
+            if (eventsAttr) {
+                const parts = eventsAttr.split(",");
+                for (let j = 0; j < parts.length; j++) {
+                    const trimmed = parts[j].trim();
+                    if (trimmed) {
+                        ensureEventTypeBound(trimmed);
+                    }
+                }
+            }
+        }
+    }
+
+    function scheduleReconnect(url) {
+        if (!url) {
+            return;
+        }
+        setTimeout(function () {
+            console.log("[PyLage] Attempting reconnect to:", url);
+            connectWebSocket(url);
+            reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
+        }, reconnectDelay);
+    }
+
     function connectWebSocket(url) {
         if (!url) {
             return null;
@@ -20,16 +60,25 @@ CLIENT_RUNTIME = r"""
             socket = new WebSocket(url);
         } catch (error) {
             console.error("[PyLage] WebSocket creation failed", error);
+            scheduleReconnect(url);
             return null;
         }
 
         socket.addEventListener("open", function () {
             console.log("[PyLage] WebSocket connected");
+            reconnectDelay = 1000;
             window.PyLage.socket = socket;
+            if (typeof window.PyLage.onConnectionChange === "function") {
+                window.PyLage.onConnectionChange(true);
+            }
         });
 
         socket.addEventListener("close", function () {
             console.log("[PyLage] WebSocket disconnected");
+            if (typeof window.PyLage.onConnectionChange === "function") {
+                window.PyLage.onConnectionChange(false);
+            }
+            scheduleReconnect(url);
         });
 
         socket.addEventListener("error", function (error) {
@@ -164,6 +213,16 @@ CLIENT_RUNTIME = r"""
         console.log("[PyLage response]", message);
 
         if (!message) {
+            return;
+        }
+
+        if (message.type === "response") {
+            if (!message.ok) {
+                console.error("[PyLage] Server error:", message.error);
+                if (typeof window.PyLage.onError === "function") {
+                    window.PyLage.onError(message.error);
+                }
+            }
             return;
         }
 
@@ -624,6 +683,13 @@ CLIENT_RUNTIME = r"""
     document.addEventListener("input", handleEvent);
     document.addEventListener("change", handleEvent);
     document.addEventListener("submit", handleEvent);
+
+    scanAndBindEvents(document);
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            scanAndBindEvents(document);
+        });
+    }
 
     window.PyLage.socket = connectWebSocket(
         window.PyLage.websocketUrl

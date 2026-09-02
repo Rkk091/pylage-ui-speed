@@ -183,18 +183,35 @@ class HTMLRenderer:
             if name == "style" or name in excluded:
                 continue
 
+            if isinstance(raw_value, Component):
+                raise TypeError(
+                    f"Prop {name!r} received a Component instance {raw_value!r}. "
+                    f"Pass components as children, not as props."
+                )
+
             value = self._value(raw_value)
 
             if value is None:
                 continue
+
+            if isinstance(value, Component):
+                raise TypeError(
+                    f"Prop {name!r} resolved to a Component instance {value!r}. "
+                    f"Pass components as children, not as props."
+                )
+
+            if callable(value) and not name.startswith("on_"):
+                raise TypeError(
+                    f"Prop {name!r} received a callable value {value!r}. "
+                    f"Callables should only be passed to on_* event handlers."
+                )
 
             prop_definition = prop_definitions.get(name)
 
             if name == "_html_type":
                 html_name = "type"
                 kind = "attribute"
-            # Registry metadata controls the HTML attribute name.
-            if prop_definition is not None:
+            elif prop_definition is not None:
                 html_name = prop_definition.html_name or name
                 kind = prop_definition.kind
             else:
@@ -217,6 +234,9 @@ class HTMLRenderer:
                 continue
 
             if kind in {"text", "state"}:
+                continue
+
+            if value is False:
                 continue
 
             if value is True:
